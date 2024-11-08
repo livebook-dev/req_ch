@@ -44,6 +44,24 @@ defmodule ReqCh do
 
       The `:explorer` format is special, and will build an Explorer dataframe
       in case the `:explorer` dependency is installed.
+
+  ## Examples
+
+  With a plain query:
+
+      iex> req = Req.new() |> ReqCh.attach()
+      iex> Req.post!(req, clickhouse: "SELECT number from system.numbers LIMIT 3").body
+      "0\\n1\\n2\\n"
+
+  Changing the format to `:explorer` will return a dataframe:
+
+      iex> req = Req.new() |> ReqCh.attach()
+      iex> Req.post!(req, clickhouse: "SELECT number from system.numbers LIMIT 3", format: :explorer).body
+      #Explorer.DataFrame<
+        Polars[3 x 1]
+        number u64 [0, 1, 2]
+      >
+
   """
   def attach(%Req.Request{} = request, opts \\ []) do
     request
