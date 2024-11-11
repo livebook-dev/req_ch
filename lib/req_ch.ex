@@ -154,14 +154,22 @@ defmodule ReqCh do
     is_parquet_response = response.headers["x-clickhouse-format"] == ["Parquet"]
 
     if want_explorer_df and is_parquet_response do
-      Req.Request.halt(request, %{
-        response
-        | body: Explorer.DataFrame.load_parquet!(response.body)
-      })
+      Req.Request.halt(request, %{response | body: load_parquet(response.body)})
     else
       pair
     end
   end
 
   defp handle_clickhouse_result(request_response), do: request_response
+
+  if Code.ensure_loaded?(Explorer) do
+    defp load_parquet(body) do
+      Explorer.DataFrame.load_parquet!(body)
+    end
+  else
+    defp load_parquet(_body) do
+      raise ArgumentError,
+            "format: :explorer - you need to install Explorer as a dependency in order to use this format"
+    end
+  end
 end
