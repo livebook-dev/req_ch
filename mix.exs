@@ -26,6 +26,7 @@ defmodule ReqCh.MixProject do
   defp deps do
     [
       {:req, "~> 0.5"},
+      {:explorer, "~> 0.10", optional: true},
       {:ex_doc, ">= 0.0.0", only: :docs, runtime: false}
     ]
   end
