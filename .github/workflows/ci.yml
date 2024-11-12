@@ -1,4 +1,4 @@
-name: "ReqCh CI"
+name: "ReqCH CI"
 
 on:
   push:

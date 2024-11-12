@@ -1,8 +1,8 @@
-defmodule ReqCh do
+defmodule ReqCH do
   @moduledoc """
   A Req plugin for ClickHouse.
 
-  By default, `ReqCh` will use TSV as the default output format.
+  By default, `ReqCH` will use TSV as the default output format.
   To change that, see the `attach/2` docs for details.
   """
 
@@ -37,13 +37,13 @@ defmodule ReqCh do
 
   With a plain query:
 
-      iex> req = Req.new() |> ReqCh.attach()
+      iex> req = Req.new() |> ReqCH.attach()
       iex> Req.post!(req, clickhouse: "SELECT number from system.numbers LIMIT 3").body
       "0\\n1\\n2\\n"
 
   Changing the format to `:explorer` will return a dataframe:
 
-      iex> req = Req.new() |> ReqCh.attach()
+      iex> req = Req.new() |> ReqCH.attach()
       iex> Req.post!(req, clickhouse: "SELECT number from system.numbers LIMIT 3", format: :explorer).body
       #Explorer.DataFrame<
         Polars[3 x 1]
