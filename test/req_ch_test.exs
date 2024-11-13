@@ -185,4 +185,68 @@ defmodule ReqCHTest do
            2
            """
   end
+
+  describe "query/1" do
+    test "a plain query with defaults" do
+      assert %Req.Response{} = response = ReqCH.query("SELECT number FROM system.numbers LIMIT 3")
+
+      assert response.status == 200
+
+      assert response.body == """
+             0
+             1
+             2
+             """
+    end
+  end
+
+  describe "query/2" do
+    test "a plain query with format" do
+      assert %Req.Response{} =
+               response =
+               ReqCH.query("SELECT number FROM system.numbers LIMIT 3", format: :explorer)
+
+      assert response.status == 200
+      assert %Explorer.DataFrame{} = response.body
+    end
+
+    test "a plain query with database" do
+      assert %Req.Response{} =
+               response = ReqCH.query("SELECT number FROM numbers LIMIT 3", database: "system")
+
+      assert response.status == 200
+
+      assert response.body == """
+             0
+             1
+             2
+             """
+    end
+
+    test "using a req with a plain query" do
+      req = Req.new()
+
+      assert %Req.Response{} =
+               response = ReqCH.query(req, "SELECT number FROM system.numbers LIMIT 3")
+
+      assert response.status == 200
+
+      assert response.body == """
+             0
+             1
+             2
+             """
+    end
+
+    test "using a req with a plain query changing format" do
+      req = Req.new()
+
+      assert %Req.Response{} =
+               response =
+               ReqCH.query(req, "SELECT number FROM system.numbers LIMIT 3", format: :explorer)
+
+      assert response.status == 200
+      assert %Explorer.DataFrame{} = response.body
+    end
+  end
 end
