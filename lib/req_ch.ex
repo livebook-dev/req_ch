@@ -55,7 +55,8 @@ defmodule ReqCH do
   and password:
 
       iex> req = Req.new(base_url: "https://example.org:8123", auth: {:basic, "user:pass"})
-      iex> Req.post!(req, clickhouse: "SELECT number from system.numbers LIMIT 3").body
+      iex> req = ReqCH.attach(req)
+      iex> Req.post!(req, clickhouse: "SELECT number FROM system.numbers LIMIT 3").body
       "0\\n1\\n2\\n"
 
   """
