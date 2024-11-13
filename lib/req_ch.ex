@@ -70,10 +70,7 @@ defmodule ReqCH do
   defp run(%Req.Request{private: %{clickhouse_format: _}} = request), do: request
 
   defp run(%Req.Request{options: %{clickhouse: _query}} = request) do
-    request =
-      with %Req.Request{options: %{} = opts} when not is_map_key(opts, :base_url) <- request do
-        Req.Request.merge_options(request, base_url: "http://localhost:8123")
-      end
+    request = update_in(request.options, &Map.put_new(&1, :base_url, "http://localhost:8123"))
 
     request
     |> add_format()
