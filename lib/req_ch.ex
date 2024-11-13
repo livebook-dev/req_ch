@@ -32,6 +32,8 @@ defmodule ReqCH do
 
       The `:explorer` format is special, and will build an Explorer dataframe
       in case the `:explorer` dependency is installed.
+    * `:database` - Optional. The database to use in the queries.
+      Default is `nil`.
 
   ## Examples
 
@@ -41,13 +43,13 @@ defmodule ReqCH do
   A plain query:
 
       iex> req = Req.new() |> ReqCH.attach()
-      iex> Req.get!(req, clickhouse: "SELECT number from system.numbers LIMIT 3").body
+      iex> Req.get!(req, clickhouse: "SELECT number FROM system.numbers LIMIT 3").body
       "0\\n1\\n2\\n"
 
   Changing the format to `:explorer` will return a dataframe:
 
       iex> req = Req.new() |> ReqCH.attach()
-      iex> Req.get!(req, clickhouse: "SELECT number from system.numbers LIMIT 3", format: :explorer).body
+      iex> Req.get!(req, clickhouse: "SELECT number FROM system.numbers LIMIT 3", format: :explorer).body
       #Explorer.DataFrame<
         Polars[3 x 1]
         number u64 [0, 1, 2]
@@ -55,8 +57,8 @@ defmodule ReqCH do
 
   Using parameters is also possible:
 
-      iex> req = Req.new() |> ReqCH.attach(format: :explorer)
-      iex> Req.get!(req, clickhouse: {"SELECT number FROM system.numbers WHERE number > {num:UInt8} LIMIT 3", [num: 5]}).body
+      iex> req = Req.new() |> ReqCH.attach(format: :explorer, database: "system")
+      iex> Req.get!(req, clickhouse: {"SELECT number FROM numbers WHERE number > {num:UInt8} LIMIT 3", [num: 5]}).body
       #Explorer.DataFrame<
         Polars[3 x 1]
         number u64 [6, 7, 8]
