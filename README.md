@@ -1,4 +1,4 @@
-# ReqCh
+# ReqCH
 
 A Req plugin for ClickHouse. 
 

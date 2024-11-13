@@ -1,18 +1,13 @@
-defmodule ReqCh do
+defmodule ReqCH do
   @moduledoc """
   A Req plugin for ClickHouse.
 
-  By default, `ReqCh` will use TSV as the default output format.
+  By default, `ReqCH` will use TSV as the default output format.
   To change that, see the `attach/2` docs for details.
   """
 
   @connection_options [
-    :database,
-    :scheme,
-    :username,
-    :password,
-    :hostname,
-    :port
+    :database
   ]
 
   @general_options [
@@ -23,19 +18,12 @@ defmodule ReqCh do
   @formats_page "https://clickhouse.com/docs/en/interfaces/formats"
   @supported_formats ~w(TabSeparated TabSeparatedRaw TabSeparatedWithNames TabSeparatedWithNamesAndTypes TabSeparatedRawWithNames TabSeparatedRawWithNamesAndTypes Template TemplateIgnoreSpaces CSV CSVWithNames CSVWithNamesAndTypes CustomSeparated CustomSeparatedWithNames CustomSeparatedWithNamesAndTypes SQLInsert Values Vertical JSON JSONAsString JSONAsObject JSONStrings JSONColumns JSONColumnsWithMetadata JSONCompact JSONCompactStrings JSONCompactColumns JSONEachRow PrettyJSONEachRow JSONEachRowWithProgress JSONStringsEachRow JSONStringsEachRowWithProgress JSONCompactEachRow JSONCompactEachRowWithNames JSONCompactEachRowWithNamesAndTypes JSONCompactStringsEachRow JSONCompactStringsEachRowWithNames JSONCompactStringsEachRowWithNamesAndTypes JSONObjectEachRow BSONEachRow TSKV Pretty PrettyNoEscapes PrettyMonoBlock PrettyNoEscapesMonoBlock PrettyCompact PrettyCompactNoEscapes PrettyCompactMonoBlock PrettyCompactNoEscapesMonoBlock PrettySpace PrettySpaceNoEscapes PrettySpaceMonoBlock PrettySpaceNoEscapesMonoBlock Prometheus Protobuf ProtobufSingle ProtobufList Avro AvroConfluent Parquet ParquetMetadata Arrow ArrowStream ORC One Npy RowBinary RowBinaryWithNames RowBinaryWithNamesAndTypes RowBinaryWithDefaults Native Null XML CapnProto LineAsString Regexp RawBLOB MsgPack MySQLDump DWARF Markdown Form)
 
-  import Req.Request, only: [get_option: 3]
-
   @doc """
   Attach this plugin to a Req Request.
 
   ## Options
 
-    * `:scheme` - Required. Either `"http"` or `"https"`. Default is `"http"`.
-    * `:username` - Optional. Default is `nil`.
-    * `:password` - Optional. Default is `nil`.
-    * `:hostname` - Required. Default is `"localhost"`.
-    * `:port` - Required. Default is `"8123"`.
-    * `:clickhouse` - Required. The query to be performed. If not provided,
+    * `:clickhouse` - The query to be performed. If not provided,
       the request and response pipelines won't be modified.
     * `:format` - Optional. The format of the response. Default is `:tsv`.
       This option accepts `:tsv`, `:csv` or `:explorer` as atoms.
@@ -49,18 +37,27 @@ defmodule ReqCh do
 
   With a plain query:
 
-      iex> req = Req.new() |> ReqCh.attach()
+      iex> req = Req.new() |> ReqCH.attach()
       iex> Req.post!(req, clickhouse: "SELECT number from system.numbers LIMIT 3").body
       "0\\n1\\n2\\n"
 
   Changing the format to `:explorer` will return a dataframe:
 
-      iex> req = Req.new() |> ReqCh.attach()
+      iex> req = Req.new() |> ReqCH.attach()
       iex> Req.post!(req, clickhouse: "SELECT number from system.numbers LIMIT 3", format: :explorer).body
       #Explorer.DataFrame<
         Polars[3 x 1]
         number u64 [0, 1, 2]
       >
+
+  In case a different endpoint is needed, we can use the `:base_url` option
+  from `Req` to set that value. We can use use `:auth` to pass down the username
+  and password:
+
+      iex> req = Req.new(base_url: "https://example.org:8123", auth: {:basic, "user:pass"})
+      iex> req = ReqCH.attach(req)
+      iex> Req.post!(req, clickhouse: "SELECT number FROM system.numbers LIMIT 3").body
+      "0\\n1\\n2\\n"
 
   """
   def attach(%Req.Request{} = request, opts \\ []) do
@@ -73,25 +70,12 @@ defmodule ReqCh do
   defp run(%Req.Request{private: %{clickhouse_format: _}} = request), do: request
 
   defp run(%Req.Request{options: %{clickhouse: _query}} = request) do
-    url_parts = [
-      get_option(request, :scheme, "http"),
-      "://",
-      maybe_credentials(request),
-      get_option(request, :hostname, "localhost"),
-      ":",
-      get_option(request, :port, "8123")
-    ]
-
-    url =
-      url_parts
-      |> IO.iodata_to_binary()
-      |> URI.parse()
+    request = update_in(request.options, &Map.put_new(&1, :base_url, "http://localhost:8123"))
 
     request
     |> add_format()
     |> add_query()
     |> Req.Request.append_response_steps(clickhouse_result: &handle_clickhouse_result/1)
-    |> Map.replace!(:url, url)
   end
 
   defp run(%Req.Request{} = request), do: request
@@ -139,22 +123,12 @@ defmodule ReqCh do
     end
   end
 
-  defp maybe_credentials(%Req.Request{} = request) do
-    user = Req.Request.get_option(request, :username)
-
-    if user do
-      [user, ":", Req.Request.get_option(request, :password, ""), "@"]
-    else
-      []
-    end
-  end
-
   defp handle_clickhouse_result({request, %{status: 200} = response} = pair) do
     want_explorer_df = Req.Request.get_private(request, :clickhouse_format) == :explorer
     is_parquet_response = response.headers["x-clickhouse-format"] == ["Parquet"]
 
     if want_explorer_df and is_parquet_response do
-      Req.Request.halt(request, %{response | body: load_parquet(response.body)})
+      Req.Request.halt(request, update_in(response.body, &load_parquet/1))
     else
       pair
     end

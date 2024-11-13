@@ -1,12 +1,12 @@
-defmodule ReqChTest do
+defmodule ReqCHTest do
   use ExUnit.Case
 
   test "returns a request" do
-    assert %Req.Request{} = ReqCh.attach(Req.new())
+    assert %Req.Request{} = ReqCH.attach(Req.new())
   end
 
   test "a simple query" do
-    req = Req.new() |> ReqCh.attach()
+    req = Req.new() |> ReqCH.attach()
 
     assert response =
              %Req.Response{} =
@@ -18,7 +18,7 @@ defmodule ReqChTest do
   end
 
   test "with format option as :csv" do
-    req = Req.new() |> ReqCh.attach()
+    req = Req.new() |> ReqCH.attach()
 
     assert response =
              %Req.Response{} =
@@ -31,7 +31,7 @@ defmodule ReqChTest do
   end
 
   test "with format option as :explorer" do
-    req = Req.new() |> ReqCh.attach()
+    req = Req.new() |> ReqCH.attach()
 
     assert response =
              %Req.Response{} =
@@ -47,7 +47,7 @@ defmodule ReqChTest do
   end
 
   test "with format option as :explorer but different format in the query" do
-    req = Req.new() |> ReqCh.attach()
+    req = Req.new() |> ReqCH.attach()
 
     assert response =
              %Req.Response{} =
@@ -85,7 +85,7 @@ defmodule ReqChTest do
   end
 
   test "with invalid format" do
-    req = Req.new() |> ReqCh.attach()
+    req = Req.new() |> ReqCH.attach()
 
     error_message =
       "the given format :invalid_format is invalid. Expecting one of [:tsv, :csv, :explorer] " <>
@@ -100,7 +100,7 @@ defmodule ReqChTest do
   end
 
   test "give error without the :clickhouse option" do
-    req = Req.new() |> ReqCh.attach()
+    req = Req.new() |> ReqCH.attach()
 
     assert_raise ArgumentError, fn -> Req.post!(req) end
   end
