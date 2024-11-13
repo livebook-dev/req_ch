@@ -81,6 +81,39 @@ defmodule ReqCH do
     |> Req.Request.merge_options(opts)
   end
 
+  defguardp is_query_params(value) when is_list(value) or is_map(value)
+
+  @doc false
+  def query(query, opts \\ [])
+
+  @doc false
+  def query(sql, opts) when is_binary(sql) and is_list(opts) do
+    do_query(Req.new(), sql, opts)
+  end
+
+  def query({sql, params} = query, opts)
+      when is_binary(sql) and is_query_params(params) and is_list(opts) do
+    do_query(Req.new(), query, opts)
+  end
+
+  def query(%Req.Request{} = req, query), do: query(req, query, [])
+
+  @doc false
+  def query(%Req.Request{} = req, sql, opts) when is_binary(sql) and is_list(opts) do
+    do_query(req, sql, opts)
+  end
+
+  def query(%Req.Request{} = req, {sql, params} = query, opts)
+      when is_binary(sql) and is_query_params(params) and is_list(opts) do
+    do_query(req, query, opts)
+  end
+
+  defp do_query(req, query, opts) do
+    req
+    |> attach(opts)
+    |> Req.post!(clickhouse: query)
+  end
+
   defp run(%Req.Request{private: %{clickhouse_format: _}} = request), do: request
 
   defp run(%Req.Request{options: %{clickhouse: _query}} = request) do
@@ -99,7 +132,7 @@ defmodule ReqCH do
     query = Req.Request.fetch_option!(request, :clickhouse)
 
     case query do
-      {sql, params} when is_binary(sql) and (is_list(params) or is_map(params)) ->
+      {sql, params} when is_binary(sql) and is_query_params(params) ->
         request
         |> add_sql_part(sql)
         |> put_params(prepare_params(params))
