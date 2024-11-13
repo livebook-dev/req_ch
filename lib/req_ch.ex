@@ -26,7 +26,7 @@ defmodule ReqCH do
     * `:clickhouse` - The query to be performed. If not provided,
       the request and response pipelines won't be modified.
     * `:format` - Optional. The format of the response. Default is `:tsv`.
-      This option accepts `:tsv`, `:csv` or `:explorer` as atoms.
+      This option accepts `:tsv`, `:csv`, `:json` or `:explorer` as atoms.
 
       It also accepts all formats described in the #{@formats_page} page.
 
@@ -35,19 +35,31 @@ defmodule ReqCH do
 
   ## Examples
 
-  With a plain query:
+  Queries can be performed using both `Req.get/2` or `Req.post/2`, but GET
+  is "read-only" and commands like `CREATE` or `INSERT` cannot be used with it.
+
+  A plain query:
 
       iex> req = Req.new() |> ReqCH.attach()
-      iex> Req.post!(req, clickhouse: "SELECT number from system.numbers LIMIT 3").body
+      iex> Req.get!(req, clickhouse: "SELECT number from system.numbers LIMIT 3").body
       "0\\n1\\n2\\n"
 
   Changing the format to `:explorer` will return a dataframe:
 
       iex> req = Req.new() |> ReqCH.attach()
-      iex> Req.post!(req, clickhouse: "SELECT number from system.numbers LIMIT 3", format: :explorer).body
+      iex> Req.get!(req, clickhouse: "SELECT number from system.numbers LIMIT 3", format: :explorer).body
       #Explorer.DataFrame<
         Polars[3 x 1]
         number u64 [0, 1, 2]
+      >
+
+  Using parameters is also possible:
+
+      iex> req = Req.new() |> ReqCH.attach(format: :explorer)
+      iex> Req.get!(req, clickhouse: {"SELECT number FROM system.numbers WHERE number > {num:UInt8} LIMIT 3", [num: 5]}).body
+      #Explorer.DataFrame<
+        Polars[3 x 1]
+        number u64 [6, 7, 8]
       >
 
   In case a different endpoint is needed, we can use the `:base_url` option
@@ -75,6 +87,7 @@ defmodule ReqCH do
     request
     |> add_format()
     |> add_query()
+    |> maybe_add_database()
     |> Req.Request.append_response_steps(clickhouse_result: &handle_clickhouse_result/1)
   end
 
@@ -83,7 +96,33 @@ defmodule ReqCH do
   defp add_query(%Req.Request{} = request) do
     query = Req.Request.fetch_option!(request, :clickhouse)
 
-    %{request | body: query}
+    case query do
+      {sql, params} when is_binary(sql) and (is_list(params) or is_map(params)) ->
+        request
+        |> add_sql_part(sql)
+        |> put_params(prepare_params(params))
+
+      sql when is_binary(sql) ->
+        add_sql_part(request, sql)
+    end
+  end
+
+  defp add_sql_part(%Req.Request{method: :post} = request, sql), do: %{request | body: sql}
+
+  defp add_sql_part(%Req.Request{method: :get} = request, sql),
+    do: put_params(request, query: sql)
+
+  defp put_params(request, params) do
+    encoded = URI.encode_query(params, :rfc3986)
+
+    update_in(request.url.query, fn
+      nil -> encoded
+      query -> query <> "&" <> encoded
+    end)
+  end
+
+  defp prepare_params(params) do
+    Enum.map(params, fn {key, value} -> {"param_#{key}", value} end)
   end
 
   defp add_format(%Req.Request{} = request) do
@@ -98,6 +137,7 @@ defmodule ReqCH do
 
   defp normalise_format(:tsv), do: "TabSeparated"
   defp normalise_format(:csv), do: "CSV"
+  defp normalise_format(:json), do: "JSON"
 
   if Code.ensure_loaded?(Explorer) do
     defp normalise_format(:explorer), do: :explorer
@@ -112,7 +152,7 @@ defmodule ReqCH do
 
   defp normalise_format(_), do: nil
 
-  @valid_formats [:tsv, :csv, :explorer]
+  @valid_formats [:tsv, :csv, :json, :explorer]
   defp normalise_format!(format) do
     if valid = normalise_format(format) do
       valid
@@ -120,6 +160,14 @@ defmodule ReqCH do
       raise ArgumentError,
             "the given format #{inspect(format)} is invalid. Expecting one of #{inspect(@valid_formats)} " <>
               "or one of the valid options described in #{@formats_page}"
+    end
+  end
+
+  defp maybe_add_database(%Req.Request{} = request) do
+    if database = Req.Request.get_option(request, :database) do
+      put_params(request, database: database)
+    else
+      request
     end
   end
 
