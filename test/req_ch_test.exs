@@ -27,7 +27,18 @@ defmodule ReqCHTest do
                format: :csv
              )
 
-    assert response.body == "0,-2\n1,-1\n2,0\n3,1\n4,2\n5,3\n6,4\n7,5\n8,6\n9,7\n"
+    assert response.body == """
+           0,-2
+           1,-1
+           2,0
+           3,1
+           4,2
+           5,3
+           6,4
+           7,5
+           8,6
+           9,7
+           """
   end
 
   test "with format option as :explorer" do
@@ -57,6 +68,8 @@ defmodule ReqCHTest do
                format: :explorer
              )
 
+    assert response.status == 200
+
     assert %{
              "data" => [
                %{"less_two" => "-2", "number" => "0"},
@@ -84,11 +97,37 @@ defmodule ReqCHTest do
            } = response.body
   end
 
+  test "with format :json" do
+    req = Req.new() |> ReqCH.attach(format: :json)
+
+    assert response =
+             %Req.Response{} =
+             Req.post!(req,
+               clickhouse: "SELECT number, number - 2 as less_two from system.numbers LIMIT 3"
+             )
+
+    assert response.status == 200
+
+    assert %{
+             "data" => [
+               %{"less_two" => "-2", "number" => "0"},
+               %{"less_two" => "-1", "number" => "1"},
+               %{"less_two" => "0", "number" => "2"}
+             ],
+             "meta" => [
+               %{"name" => "number", "type" => "UInt64"},
+               %{"name" => "less_two", "type" => "Int64"}
+             ],
+             "rows" => 3,
+             "rows_before_limit_at_least" => 3
+           } = response.body
+  end
+
   test "with invalid format" do
     req = Req.new() |> ReqCH.attach()
 
     error_message =
-      "the given format :invalid_format is invalid. Expecting one of [:tsv, :csv, :explorer] " <>
+      "the given format :invalid_format is invalid. Expecting one of [:tsv, :csv, :json, :explorer] " <>
         "or one of the valid options described in https://clickhouse.com/docs/en/interfaces/formats"
 
     assert_raise ArgumentError, error_message, fn ->
@@ -103,5 +142,47 @@ defmodule ReqCHTest do
     req = Req.new() |> ReqCH.attach()
 
     assert_raise ArgumentError, fn -> Req.post!(req) end
+  end
+
+  test "a query with params" do
+    req = Req.new() |> ReqCH.attach()
+
+    assert response =
+             %Req.Response{} =
+             Req.get!(req,
+               clickhouse:
+                 {"SELECT number FROM system.numbers WHERE number > {num:UInt8} LIMIT 7",
+                  [num: 5]}
+             )
+
+    assert response.status == 200
+
+    assert response.body == """
+           6
+           7
+           8
+           9
+           10
+           11
+           12
+           """
+  end
+
+  test "using the database option" do
+    req = Req.new() |> ReqCH.attach(database: "system")
+
+    assert response =
+             %Req.Response{} =
+             Req.get!(req,
+               clickhouse: "SELECT number FROM numbers LIMIT 3"
+             )
+
+    assert response.status == 200
+
+    assert response.body == """
+           0
+           1
+           2
+           """
   end
 end
