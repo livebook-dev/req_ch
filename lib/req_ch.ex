@@ -52,7 +52,7 @@ defmodule ReqCH do
 
   In case the server needs authentication, it's possible to use `Req` options for that.
 
-      iex> req = ReqCH.new(base_url: "https://example.org:8123", auth: {:basic, "user:pass"})
+      iex> req = ReqCH.new(base_url: "http://example.org:8123", auth: {:basic, "user:pass"})
       iex> Req.post!(req, body: "SELECT number FROM system.numbers LIMIT 3").body
       "0\\n1\\n2\\n"
 
@@ -195,6 +195,7 @@ defmodule ReqCH do
   defp normalise_format(_), do: nil
 
   @valid_formats [:tsv, :csv, :json, :explorer]
+
   defp format_error(format) do
     ArgumentError.exception(
       "the given format #{inspect(format)} is invalid. Expecting one of #{inspect(@valid_formats)} " <>
