@@ -7,7 +7,6 @@ defmodule ReqCH do
   """
 
   @options [
-    :clickhouse,
     :database,
     :format
   ]
@@ -117,7 +116,8 @@ defmodule ReqCH do
       when is_binary(sql_query) and is_query_params(params) and is_list(opts) do
     opts
     |> new()
-    |> Req.request(clickhouse: {sql_query, params})
+    |> put_params(prepare_params(params))
+    |> Req.post(body: sql_query)
   end
 
   @doc """
@@ -141,30 +141,10 @@ defmodule ReqCH do
     request = update_in(request.options, &Map.put_new(&1, :base_url, "http://localhost:8123"))
 
     with %Req.Request{} = req1 <- add_format(request),
-         %Req.Request{} = req2 <- maybe_add_query(req1),
-         %Req.Request{} = req3 <- maybe_add_database(req2) do
-      Req.Request.append_response_steps(req3, clickhouse_result: &handle_clickhouse_result/1)
+         %Req.Request{} = req2 <- maybe_add_database(req1) do
+      Req.Request.append_response_steps(req2, clickhouse_result: &handle_clickhouse_result/1)
     end
   end
-
-  defp maybe_add_query(%Req.Request{options: %{clickhouse: query}} = request) do
-    case query do
-      {sql, params} when is_binary(sql) and is_query_params(params) ->
-        request
-        |> add_sql_part(sql)
-        |> put_params(prepare_params(params))
-
-      sql when is_binary(sql) ->
-        add_sql_part(request, sql)
-    end
-  end
-
-  defp maybe_add_query(%Req.Request{} = request), do: request
-
-  defp add_sql_part(%Req.Request{method: :post} = request, sql), do: %{request | body: sql}
-
-  defp add_sql_part(%Req.Request{method: :get} = request, sql),
-    do: put_params(request, query: sql)
 
   defp put_params(request, params) do
     encoded = URI.encode_query(params, :rfc3986)
