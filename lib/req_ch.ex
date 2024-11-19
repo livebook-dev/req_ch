@@ -159,6 +159,8 @@ defmodule ReqCH do
     Enum.map(params, fn {key, value} -> {"param_#{key}", value} end)
   end
 
+  @valid_formats [:tsv, :csv, :json, :explorer]
+
   defp add_format(%Req.Request{} = request) do
     format_option = Req.Request.get_option(request, :format, :tsv)
     format = normalise_format(format_option)
@@ -170,10 +172,9 @@ defmodule ReqCH do
       |> Req.Request.put_private(:clickhouse_format, format)
       |> Req.Request.put_header("x-clickhouse-format", format_header)
     else
-      Req.Request.halt(
-        request,
-        format_error(format_option)
-      )
+      raise ArgumentError,
+            "the given format #{inspect(format_option)} is invalid. Expecting one of #{inspect(@valid_formats)} " <>
+              "or one of the valid options described in #{@formats_page}"
     end
   end
 
@@ -193,15 +194,6 @@ defmodule ReqCH do
   defp normalise_format(format) when format in @supported_formats, do: format
 
   defp normalise_format(_), do: nil
-
-  @valid_formats [:tsv, :csv, :json, :explorer]
-
-  defp format_error(format) do
-    ArgumentError.exception(
-      "the given format #{inspect(format)} is invalid. Expecting one of #{inspect(@valid_formats)} " <>
-        "or one of the valid options described in #{@formats_page}"
-    )
-  end
 
   defp maybe_add_database(%Req.Request{} = request) do
     if database = Req.Request.get_option(request, :database) do

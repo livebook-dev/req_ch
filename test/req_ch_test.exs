@@ -168,14 +168,13 @@ defmodule ReqCHTest do
         "the given format :invalid_format is invalid. Expecting one of [:tsv, :csv, :json, :explorer] " <>
           "or one of the valid options described in https://clickhouse.com/docs/en/interfaces/formats"
 
-      assert {:error, error_exception} =
-               ReqCH.query(
-                 "SELECT number from system.numbers LIMIT 10",
-                 [],
-                 format: :invalid_format
-               )
-
-      assert ArgumentError.message(error_exception) == error_message
+      assert_raise ArgumentError, error_message, fn ->
+        ReqCH.query(
+          "SELECT number from system.numbers LIMIT 10",
+          [],
+          format: :invalid_format
+        )
+      end
     end
 
     test "a query with params" do
