@@ -107,6 +107,13 @@ defmodule ReqCH do
         number u64 [6, 7, 8]
       >
 
+  This function can accept `Req` options, as well as mixing them with `ReqCH` options:
+
+      iex> opts = [base_url: "http://example.org:8123", database: "system", auth: {:basic, "user:pass"}]
+      iex> {:ok, response} = ReqCH.query("SELECT number FROM numbers LIMIT 3", [], opts)
+      iex> response.body
+      "0\\n1\\n2\\n"
+
   """
   @spec query(sql_query :: binary(), params :: Map.t() | Keyword.t(), opts :: Keyword.t()) ::
           {:ok, Req.Response.t()} | {:error, binary()}
