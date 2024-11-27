@@ -122,9 +122,9 @@ defmodule ReqCH do
 
   """
   @spec query(
-          Req.t(),
+          Req.Request.t(),
           sql_query :: binary(),
-          sql_query_params :: Map.t() | Keyword.t(),
+          sql_query_params :: map() | Keyword.t(),
           opts :: Keyword.t()
         ) :: {:ok, Req.Response.t()} | {:error, binary()}
   def query(req, sql_query, sql_query_params \\ [], opts \\ [])
@@ -141,9 +141,9 @@ defmodule ReqCH do
   Same as `query/4`, but raises in case of error.
   """
   @spec query!(
-          Req.t(),
+          Req.Request.t(),
           sql_query :: binary(),
-          sql_query_params :: Map.t() | Keyword.t(),
+          sql_query_params :: map() | Keyword.t(),
           opts :: Keyword.t()
         ) :: Req.Response.t()
   def query!(req, sql_query, sql_query_params \\ [], opts \\ [])
