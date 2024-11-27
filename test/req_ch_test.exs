@@ -58,10 +58,12 @@ defmodule ReqCHTest do
     end
   end
 
-  describe "query/3" do
+  describe "query/4" do
     test "a plain query with defaults" do
+      req = ReqCH.new(database: "system")
+
       assert {:ok, %Req.Response{} = response} =
-               ReqCH.query("SELECT number FROM system.numbers LIMIT 3")
+               ReqCH.query(req, "SELECT number FROM numbers LIMIT 3", [], [])
 
       assert response.status == 200
 
@@ -72,22 +74,32 @@ defmodule ReqCHTest do
              """
     end
 
-    test "a plain query with database" do
+    test "a query with params and database in opts" do
+      req = ReqCH.new()
+
       assert {:ok, %Req.Response{} = response} =
-               ReqCH.query("SELECT number FROM numbers LIMIT 3", [], database: "system")
+               ReqCH.query(
+                 req,
+                 "SELECT number FROM numbers WHERE number > {num:UInt8} LIMIT 3",
+                 [num: 25],
+                 database: "system"
+               )
 
       assert response.status == 200
 
       assert response.body == """
-             0
-             1
-             2
+             26
+             27
+             28
              """
     end
 
     test "with format option as :explorer" do
+      req = ReqCH.new()
+
       assert {:ok, %Req.Response{} = response} =
                ReqCH.query(
+                 req,
                  "SELECT number, number - 2 as less_two from system.numbers LIMIT 10",
                  [],
                  format: :explorer
@@ -105,6 +117,7 @@ defmodule ReqCHTest do
     test "with format option as :explorer but different format in the query" do
       assert {:ok, %Req.Response{} = response} =
                ReqCH.query(
+                 ReqCH.new(),
                  "SELECT number, number - 2 as less_two from system.numbers LIMIT 10 FORMAT JSON",
                  format: :explorer
                )
@@ -141,6 +154,7 @@ defmodule ReqCHTest do
     test "with format :json" do
       assert {:ok, %Req.Response{} = response} =
                ReqCH.query(
+                 ReqCH.new(),
                  "SELECT number, number - 2 as less_two from system.numbers LIMIT 3",
                  [],
                  format: :json
@@ -170,6 +184,7 @@ defmodule ReqCHTest do
 
       assert_raise ArgumentError, error_message, fn ->
         ReqCH.query(
+          ReqCH.new(),
           "SELECT number from system.numbers LIMIT 10",
           [],
           format: :invalid_format
@@ -180,6 +195,7 @@ defmodule ReqCHTest do
     test "a query with params" do
       assert {:ok, %Req.Response{} = response} =
                ReqCH.query(
+                 ReqCH.new(),
                  "SELECT number FROM system.numbers WHERE number > {num:UInt8} LIMIT 7",
                  num: 5
                )
@@ -200,6 +216,7 @@ defmodule ReqCHTest do
     test "a query with unknown database" do
       assert {:ok, %Req.Response{} = response} =
                ReqCH.query(
+                 ReqCH.new(),
                  "SELECT number FROM sistema WHERE number > {num:UInt8} LIMIT 7",
                  num: 5
                )
