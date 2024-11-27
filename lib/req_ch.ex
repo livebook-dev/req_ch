@@ -29,6 +29,7 @@ defmodule ReqCH do
       This option accepts `:tsv`, `:csv`, `:json` or `:explorer` as atoms.
 
       It also accepts all formats described in the #{@formats_page} page.
+      Use plain strings for these formats.
 
       The `:explorer` format is special, and will build an Explorer dataframe
       in case the `:explorer` dependency is installed.
@@ -41,14 +42,14 @@ defmodule ReqCH do
   After setting a default database, one can make a request directly:
 
       iex> req = ReqCH.new(database: "system")
-      iex> Req.post!(req, body: "SELECT number FROM numbers LIMIT 3").body
-      1\n2\n3\n
+      iex> Req.post!(req, body: "SELECT number + 1 FROM numbers LIMIT 3").body
+      "1\\n2\\n3\\n"
 
   It's also possible to make a query using `Req.get/2`:
 
       iex> req = ReqCH.new(database: "system")
-      iex> Req.get!(req, params: [query: "SELECT number FROM numbers LIMIT 3"]).body
-      1\n2\n3\n
+      iex> Req.get!(req, params: [query: "SELECT number + 1 FROM numbers LIMIT 3"]).body
+      "1\\n2\\n3\\n"
 
   In case the server needs authentication, it's possible to use `Req` options for that.
 
