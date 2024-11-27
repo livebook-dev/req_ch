@@ -81,7 +81,7 @@ defmodule ReqCH do
   Queries can be performed using both `Req.get/2` or `Req.post/2`, but GET
   is "read-only" and commands like `CREATE` or `INSERT` cannot be used with it.
   For that reason, by default we perform a `POST` request.
-  To change that, use `query/2` with a pre-configured `req`.
+  To change that, use `query/4` with a pre-configured `req`.
 
   A plain query:
 
@@ -128,6 +128,59 @@ defmodule ReqCH do
   end
 
   @doc """
+  Performs a query against the ClickHouse API.
+
+  This version receives a `Req.Request.t()`, so it won't
+  create a new one from scratch.
+
+  By default, it will use the `http://localhost:8123` as `:base_url`.
+  You can change that either providing in your Req request, or in passing
+  down in the options.
+  See `new/1` for the options.
+
+  ## Examples
+
+  A plain query:
+
+      iex> req = ReqCH.new(database: "system")
+      iex> {:ok, response} = ReqCH.query(req, "SELECT number FROM numbers LIMIT 3", [], [])
+      iex> response.body
+      "0\\n1\\n2\\n"
+
+  With a specific format:
+
+      iex> req = ReqCH.new(database: "system")
+      iex> {:ok, response} = ReqCH.query(req, "SELECT number FROM numbers LIMIT 3", [], [format: :explorer])
+      iex> response.body
+      #Explorer.DataFrame<
+        Polars[3 x 1]
+        number u64 [0, 1, 2]
+      >
+
+   Passing SQL params:
+
+      iex> req = ReqCH.new(database: "system")
+      iex> {:ok, response} = ReqCH.query(req, "SELECT number FROM numbers WHERE number > {num:UInt8} LIMIT 3", [num: 5], [])
+      iex> response.body
+      "6\\n7\\n8\\n"
+  """
+  @spec query(
+          Req.t(),
+          sql_query :: binary(),
+          sql_query_params :: Map.t() | Keyword.t(),
+          opts :: Keyword.t()
+        ) :: {:ok, Req.Response.t()} | {:error, binary()}
+  def query(req, sql_query, sql_query_params, opts)
+
+  def query(%Req.Request{} = req, sql_query, sql_query_params, opts)
+      when is_binary(sql_query) and is_query_params(sql_query_params) and is_list(opts) do
+    req
+    |> attach(opts)
+    |> put_params(prepare_params(sql_query_params))
+    |> Req.post(body: sql_query)
+  end
+
+  @doc """
   Same as `query/3`, but raises in case of error.
   """
   @spec query!(sql_query :: binary(), params :: Map.t() | Keyword.t(), opts :: Keyword.t()) ::
@@ -137,6 +190,24 @@ defmodule ReqCH do
   def query!(sql_query, params, opts)
       when is_binary(sql_query) and is_query_params(params) and is_list(opts) do
     case query(sql_query, params, opts) do
+      {:ok, response} -> response
+      {:error, exception} -> raise exception
+    end
+  end
+
+  @doc """
+  Same as `query/4`, but raises in case of error.
+  """
+  @spec query(
+          Req.t(),
+          sql_query :: binary(),
+          sql_query_params :: Map.t() | Keyword.t(),
+          opts :: Keyword.t()
+        ) :: Req.Response.t()
+  def query!(req, sql_query, sql_query_params, opts)
+
+  def query!(%Req.Request{} = req, sql_query, sql_query_params, opts) do
+    case query(req, sql_query, sql_query_params, opts) do
       {:ok, response} -> response
       {:error, exception} -> raise exception
     end

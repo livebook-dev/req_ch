@@ -209,4 +209,61 @@ defmodule ReqCHTest do
       assert response.body =~ "UNKNOWN_TABLE"
     end
   end
+
+  describe "query/4" do
+    test "a plain query with defaults" do
+      req = ReqCH.new(database: "system")
+
+      assert {:ok, %Req.Response{} = response} =
+               ReqCH.query(req, "SELECT number FROM numbers LIMIT 3", [], [])
+
+      assert response.status == 200
+
+      assert response.body == """
+             0
+             1
+             2
+             """
+    end
+
+    test "a query with params and database in opts" do
+      req = ReqCH.new()
+
+      assert {:ok, %Req.Response{} = response} =
+               ReqCH.query(
+                 req,
+                 "SELECT number FROM numbers WHERE number > {num:UInt8} LIMIT 3",
+                 [num: 25],
+                 database: "system"
+               )
+
+      assert response.status == 200
+
+      assert response.body == """
+             26
+             27
+             28
+             """
+    end
+
+    test "with format option as :explorer" do
+      req = ReqCH.new()
+
+      assert {:ok, %Req.Response{} = response} =
+               ReqCH.query(
+                 req,
+                 "SELECT number, number - 2 as less_two from system.numbers LIMIT 10",
+                 [],
+                 format: :explorer
+               )
+
+      assert %Explorer.DataFrame{} = df = response.body
+
+      assert Explorer.DataFrame.to_columns(df, atom_keys: true) ==
+               %{
+                 number: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                 less_two: [-2, -1, 0, 1, 2, 3, 4, 5, 6, 7]
+               }
+    end
+  end
 end
