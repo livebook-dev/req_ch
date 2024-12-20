@@ -177,7 +177,67 @@ defmodule ReqCH do
   end
 
   defp prepare_params(params) do
-    Enum.map(params, fn {key, value} -> {"param_#{key}", value} end)
+    Enum.map(params, fn {key, value} -> {"param_#{key}", prepare_param_value(value)} end)
+  end
+
+  defp prepare_param_value(text) when is_binary(text) do
+    escapes = [{"\\", "\\\\"}, {"\t", "\\\t"}, {"\n", "\\\n"}]
+
+    Enum.reduce(escapes, text, fn {pattern, replacement}, text ->
+      String.replace(text, pattern, replacement)
+    end)
+  end
+
+  defp prepare_param_value(%DateTime{} = datetime) do
+    unix_microseconds =
+      datetime
+      |> DateTime.shift_zone!("Etc/UTC")
+      |> DateTime.to_unix(:microsecond)
+
+    unix_seconds = unix_microseconds / 1_000_000
+    unix_seconds_trunc = trunc(unix_seconds)
+
+    if unix_seconds_trunc == unix_seconds do
+      unix_seconds_trunc
+    else
+      :erlang.float_to_binary(unix_seconds, decimals: 6)
+    end
+  end
+
+  defp prepare_param_value(array) when is_list(array) do
+    elements = Enum.map(array, &prepare_array_param_value/1)
+    IO.iodata_to_binary([?[, Enum.intersperse(elements, ?,), ?]])
+  end
+
+  defp prepare_param_value(tuple) when is_tuple(tuple) do
+    elements = Enum.map(Tuple.to_list(tuple), &prepare_array_param_value/1)
+    IO.iodata_to_binary([?(, Enum.intersperse(elements, ?,), ?)])
+  end
+
+  defp prepare_param_value(struct) when is_struct(struct), do: to_string(struct)
+
+  defp prepare_param_value(map) when is_map(map) do
+    elements = Enum.map(Map.to_list(map), &prepare_map_param_value/1)
+    IO.iodata_to_binary([?{, Enum.intersperse(elements, ?,), ?}])
+  end
+
+  defp prepare_param_value(other), do: to_string(other)
+
+  defp prepare_array_param_value(text) when is_binary(text) do
+    text = prepare_param_value(text)
+    [?', String.replace(text, "'", "''"), ?']
+  end
+
+  defp prepare_array_param_value(%s{} = param) when s in [Date, NaiveDateTime] do
+    [?', to_string(param), ?']
+  end
+
+  defp prepare_array_param_value(other), do: prepare_param_value(other)
+
+  defp prepare_map_param_value({key, value}) do
+    key = prepare_array_param_value(key)
+    value = prepare_array_param_value(value)
+    [key, ?:, value]
   end
 
   @valid_formats [:tsv, :csv, :json, :explorer]
