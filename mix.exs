@@ -1,7 +1,7 @@
 defmodule ReqCH.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "0.1.1"
 
   def project do
     [
@@ -11,10 +11,6 @@ defmodule ReqCH.MixProject do
       name: "ReqCH",
       description: "A minimal Req plugin for ClickHouse",
       start_permanent: Mix.env() == :prod,
-      preferred_cli_env: [
-        docs: :docs,
-        "hex.publish": :docs
-      ],
       docs: docs(),
       package: package(),
       deps: deps()
