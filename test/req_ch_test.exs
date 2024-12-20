@@ -213,6 +213,164 @@ defmodule ReqCHTest do
              """
     end
 
+    test "a query with Date(Time) params" do
+      utc_now = ~U[2024-12-20 05:44:53.855679Z]
+      utc_now_seconds = DateTime.truncate(utc_now, :second)
+      utc_today = DateTime.to_date(utc_now)
+
+      params = [
+        utc_now: utc_now,
+        utc_now_seconds: utc_now_seconds,
+        utc_today: utc_today
+      ]
+
+      response =
+        ReqCH.query!(
+          ReqCH.new(),
+          """
+          SELECT
+            {utc_now:DateTime64(6)},
+            {utc_now_seconds:DateTime},
+            {utc_today:Date}
+          FORMAT
+            JSONCompact
+          """,
+          params
+        )
+
+      assert response.status == 200
+
+      assert response.body["data"] == [
+               [
+                 "2024-12-20 05:44:53.855679",
+                 "2024-12-20 05:44:53",
+                 "2024-12-20"
+               ]
+             ]
+    end
+
+    # https://clickhouse.com/docs/en/interfaces/http#tabs-in-url-parameters
+    # https://clickhouse.com/docs/en/interfaces/formats#tabseparated-data-formatting
+    test "a query with tabs and newlines" do
+      params = [
+        tab: "a\tb",
+        newline: "c\nd",
+        both: "a\tb\nc\t\nd"
+      ]
+
+      response =
+        ReqCH.query!(
+          ReqCH.new(),
+          "SELECT {tab:String}, {newline:String}, {both:String} FORMAT JSONCompact",
+          params
+        )
+
+      assert response.status == 200
+      assert response.body["data"] == [["a\tb", "c\nd", "a\tb\nc\t\nd"]]
+    end
+
+    test "a query with arrays" do
+      params = [
+        array: ["a", "b", "c", "a\tb\nc\t\nd"],
+        empty_array: [],
+        nested_array: [["a", "b"], ["c", "d"], ["a\tb\nc\t\nd"]],
+        date_array: [~D[2024-12-20], ~D[2024-12-21]]
+      ]
+
+      response =
+        ReqCH.query!(
+          ReqCH.new(),
+          """
+          SELECT
+            {array:Array(String)},
+            {empty_array:Array(String)},
+            {nested_array:Array(Array(String))},
+            {date_array:Array(Date)}
+          FORMAT
+            JSONCompact
+          """,
+          params
+        )
+
+      assert response.status == 200
+
+      assert response.body["data"] == [
+               [
+                 ["a", "b", "c", "a\tb\nc\t\nd"],
+                 [],
+                 [["a", "b"], ["c", "d"], ["a\tb\nc\t\nd"]],
+                 ["2024-12-20", "2024-12-21"]
+               ]
+             ]
+    end
+
+    test "a query with tuples" do
+      params = [
+        tuple: {1, "a", ~D[2024-12-20]},
+        empty_tuple: {},
+        nested_tuple: {{1, "a"}, {2, "b"}},
+        date_tuple: {~D[2024-12-20], ~D[2024-12-21]}
+      ]
+
+      response =
+        ReqCH.query!(
+          ReqCH.new(),
+          """
+          SELECT
+            {tuple:Tuple(UInt8, String, Date)},
+            {empty_tuple:Tuple()},
+            {nested_tuple:Tuple(Tuple(UInt8, String), Tuple(UInt8, String))},
+            {date_tuple:Tuple(Date, Date)}
+          """,
+          params
+        )
+
+      assert response.status == 200
+
+      assert response.body ==
+               """
+               (1,'a','2024-12-20')\t\
+               ()\t\
+               ((1,'a'),(2,'b'))\t\
+               ('2024-12-20','2024-12-21')
+               """
+    end
+
+    test "a query with maps" do
+      params = [
+        map: %{"a" => 1, "b" => 2},
+        empty_map: %{},
+        nested_map: %{"a" => %{"b" => 1}, "c" => %{"d" => 2}},
+        date_map: %{"a" => ~D[2024-12-20], "b" => ~D[2024-12-21]}
+      ]
+
+      response =
+        ReqCH.query!(
+          ReqCH.new(),
+          """
+          SELECT
+            {map:Map(String, UInt8)},
+            {empty_map:Map(String, UInt8)},
+            {nested_map:Map(String, Map(String, UInt8))},
+            {date_map:Map(String, Date)}
+          FORMAT
+            JSONCompact
+          """,
+          params
+        )
+
+      assert response.status == 200
+
+      assert response.body["data"] == [
+               [
+                 %{"a" => 1, "b" => 2},
+                 %{},
+                 %{"a" => %{"b" => 1}, "c" => %{"d" => 2}},
+                 %{"a" => "2024-12-20", "b" => "2024-12-21"}
+               ]
+             ]
+    end
+
     test "a query with unknown database" do
       assert {:ok, %Req.Response{} = response} =
                ReqCH.query(
