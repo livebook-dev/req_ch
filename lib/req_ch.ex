@@ -45,11 +45,8 @@ defmodule ReqCH do
       iex> Req.post!(req, body: "SELECT number + 1 FROM numbers LIMIT 3").body
       "1\\n2\\n3\\n"
 
-  It's also possible to make a query using `Req.get/2`:
-
-      iex> req = ReqCH.new(database: "system")
-      iex> Req.get!(req, params: [query: "SELECT number + 1 FROM numbers LIMIT 3"]).body
-      "1\\n2\\n3\\n"
+  Although, if you want to pass any parameter, you would need to manually
+  encode them. For this reason, prefer to use `query/4` for doing queries.
 
   In case the server needs authentication, it's possible to use `Req` options for that.
 
@@ -75,20 +72,16 @@ defmodule ReqCH do
   @doc """
   Performs a query against the ClickHouse API.
 
-  This version receives a `Req.Request.t()`, so it won't
-  create a new one from scratch.
-
   By default, it will use the `http://localhost:8123` as `:base_url`.
   You can change that either providing in your Req request, or in passing
   down in the options.
-  See `new/1` for the options. Like that function, `query/4` accepts any
-  option that `Req.new/1` accepts.
+
+  `query/4` accepts any option that `new/1` accepts.
 
   ## Examples
 
-  Queries can be performed using both `Req.get/2` or `Req.post/2`, but GET
-  is "read-only" and commands like `CREATE` or `INSERT` cannot be used with it.
-  For that reason, by default we perform a `POST` request.
+  This function wraps `Req.get/2` and `Req.post/2` to automatically perform
+  parameter encoding.
 
   A plain query:
 
