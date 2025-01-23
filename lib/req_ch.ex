@@ -39,14 +39,12 @@ defmodule ReqCH do
 
   ## Examples
 
-  After setting a default database, one can make a request directly:
+  After setting a default database, one can make queries using `query/4` and
+  `query!/4`:
 
       iex> req = ReqCH.new(database: "system")
-      iex> Req.post!(req, body: "SELECT number + 1 FROM numbers LIMIT 3").body
+      iex> ReqCH.query!(req, "SELECT number + 1 FROM numbers LIMIT 3").body
       "1\\n2\\n3\\n"
-
-  Although, if you want to pass any parameter, you would need to manually
-  encode them. For this reason, prefer to use `query/4` for doing queries.
 
   In case the server needs authentication, it's possible to use `Req` options for that.
 
