@@ -114,12 +114,32 @@ defmodule ReqCHTest do
                }
     end
 
-    test "with format option as :explorer but different format in the query" do
+    test "with format option as :adbc" do
+      req = ReqCH.new()
+
+      assert {:ok, %Req.Response{} = response} =
+               ReqCH.query(
+                 req,
+                 "SELECT number, number - 2 as less_two from system.numbers LIMIT 10",
+                 [],
+                 format: :adbc
+               )
+
+      assert %Adbc.Result{} = result = response.body
+
+      assert Adbc.Result.to_map(result) ==
+               %{
+                 "number" => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                 "less_two" => [-2, -1, 0, 1, 2, 3, 4, 5, 6, 7]
+               }
+    end
+
+    test "with format option as :adbc but different format in the query" do
       assert {:ok, %Req.Response{} = response} =
                ReqCH.query(
                  ReqCH.new(),
                  "SELECT number, number - 2 as less_two from system.numbers LIMIT 10 FORMAT JSON",
-                 format: :explorer
+                 format: :adbc
                )
 
       assert response.status == 200
@@ -179,7 +199,7 @@ defmodule ReqCHTest do
 
     test "with invalid format" do
       error_message =
-        "the given format :invalid_format is invalid. Expecting one of [:tsv, :csv, :json, :explorer] " <>
+        "the given format :invalid_format is invalid. Expecting one of [:tsv, :csv, :json, :explorer, :adbc] " <>
           "or one of the valid options described in https://clickhouse.com/docs/en/interfaces/formats"
 
       assert_raise ArgumentError, error_message, fn ->
