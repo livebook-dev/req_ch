@@ -1,7 +1,7 @@
 defmodule ReqCH.MixProject do
   use Mix.Project
 
-  @version "0.1.1"
+  @version "0.2.0"
 
   def project do
     [
@@ -10,6 +10,10 @@ defmodule ReqCH.MixProject do
       elixir: "~> 1.14",
       name: "ReqCH",
       description: "A minimal Req plugin for ClickHouse",
+      preferred_cli_env: [
+        docs: :docs,
+        "hex.publish": :docs
+      ],
       start_permanent: Mix.env() == :prod,
       docs: docs(),
       package: package(),

@@ -11,7 +11,7 @@ Assuming that you have a ClickHouse server running on localhost, this code is go
 
 ```elixir
 Mix.install([
-  {:req_ch, "~> 0.1.0"}
+  {:req_ch, "~> 0.2.0"}
 ])
 
 req = ReqCH.new(database: "system")
@@ -28,7 +28,7 @@ and the `:explorer` format is used:
 
 ```elixir
 Mix.install([
-  {:req_ch, "~> 0.1.0"},
+  {:req_ch, "~> 0.2.0"},
   {:explorer, "~> 0.10.0"}
 ])
 
